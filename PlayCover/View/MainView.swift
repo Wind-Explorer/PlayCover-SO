@@ -3,9 +3,7 @@
 //  PlayCover
 //
 
-import Foundation
 import SwiftUI
-import Cocoa
 import AlertToast
 
 extension NSTextField {
@@ -19,16 +17,17 @@ struct SearchView: View {
 
     @State private var search: String = ""
     @State private var isEditing = false
+    private var darkSearchStroke = Color(red: 0.2, green: 0.2, blue: 0.2)
+    private var lightSearchStroke = Color(red: 0.8, green: 0.8, blue: 0.8)
     @Environment(\.colorScheme) var colorScheme
 
     var body : some View {
-        TextField(NSLocalizedString("Search...", comment: ""), text: $search)
+        TextField(NSLocalizedString("search.search", comment: ""), text: $search)
             .padding(7)
             .padding(.horizontal, 25)
             .background(Color(NSColor.textBackgroundColor))
-            .cornerRadius(8)
             .font(Font.system(size: 16))
-            .padding(.horizontal, 10)
+            .cornerRadius(8)
             .onChange(of: search, perform: { value in
                 uif.searchText = value
                 AppsVM.shared.fetchApps()
@@ -40,26 +39,30 @@ struct SearchView: View {
             })
             .textFieldStyle(PlainTextFieldStyle())
             .frame(maxWidth: .infinity).overlay(
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                        .padding(.leading, 16)
-                    if isEditing {
-                            Button(action: {
-                            self.search = ""
-                            }, label: {
-                            Image(systemName: "multiply.circle.fill")
-                                .padding(.trailing, 16)
-                        }).buttonStyle(PlainButtonStyle())
+                ZStack {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 16)
+                        if isEditing {
+                                Button(action: {
+                                self.search = ""
+                                }, label: {
+                                Image(systemName: "multiply.circle.fill")
+                                    .padding(.trailing, 16)
+                            }).buttonStyle(PlainButtonStyle())
+                        }
                     }
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(colorScheme == .dark ? darkSearchStroke : lightSearchStroke)
                 }
             )
+            .padding(.horizontal, 10)
     }
 }
 
 struct MainView: View {
 	@Environment(\.openURL) var openURL
-    @EnvironmentObject var update: UpdateService
     @EnvironmentObject var install: InstallVM
     @EnvironmentObject var apps: AppsVM
     @EnvironmentObject var integrity: AppIntegrity
@@ -67,7 +70,7 @@ struct MainView: View {
     @State var showSetup = false
     @State var noticesExpanded = false
     @State var bottomHeight: CGFloat = 0
-
+    var redColor = Color(red: 0.9, green: 0, blue: 0)
     @Binding var showToast: Bool
 
     var body: some View {
@@ -92,7 +95,7 @@ struct MainView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 0) {
                             HStack {
-                                Text("Notices").font(.headline).help("Important news and announcements")
+                                Text("bottomBar.notices").font(.headline).help("bottomBar.notices.help")
                                 Button {
                                     withAnimation { noticesExpanded.toggle() }
                                 } label: {
@@ -100,20 +103,15 @@ struct MainView: View {
                                         .rotationEffect(Angle(degrees: noticesExpanded ? 180 : 0))
                                 }
                                 Spacer()
+                                #if DEBUG
+                                Button("debug.crash") { fatalError("Crash was triggered") }
+                                    .buttonStyle(.borderedProminent).tint(redColor).controlSize(.large)
+                                #endif
                                 if !SystemConfig.isPlaySignActive {
                                     HStack {
-                                        Button("Problems logging in?") { showSetup = true }
+                                        Button("bottomBar.setupViewButton") { showSetup = true }
                                             .buttonStyle(.borderedProminent).tint(.accentColor).controlSize(.large)
                                     }
-                                }
-                                if !update.updateLink.isEmpty {
-                                    Button(action: { NSWorkspace.shared.open(URL(string: update.updateLink)!) },
-                                           label: {
-                                        HStack {
-                                            Image(systemName: "arrow.down.square.fill")
-                                            Text("Update app")
-                                        }
-                                    }).buttonStyle(UpdateButton()).controlSize(.large)
                                 }
                             }
                             Text(StoreApp.notice)
@@ -127,14 +125,9 @@ struct MainView: View {
                         HStack(spacing: 12) {
                             Spacer()
                         }.frame(maxWidth: .infinity)
-						#if DEBUG
-						Divider()
-						HStack(spacing: 12) {
-							Button("Crash") { fatalError("Crash was triggered") }
-								.buttonStyle(.borderedProminent).tint(.accentColor).controlSize(.large)
-						}.frame(maxWidth: .infinity)
-						#endif
-                    }.padding()
+                    }
+                    .padding(.horizontal)
+                    .padding(.top)
                 }
                 .background(.regularMaterial)
                 .overlay(GeometryReader { geometry in
@@ -147,15 +140,14 @@ struct MainView: View {
                 })
             }
             .toast(isPresenting: $showToast) {
-                AlertToast(type: .regular, title: NSLocalizedString("Logs copied!", comment: ""))
+                AlertToast(type: .regular, title: NSLocalizedString("logs.copied", comment: ""))
             }
             .sheet(isPresented: $showSetup) {
                 SetupView()
             }
-            .alert(NSLocalizedString("PlayCover must be in the Applications folder. " +
-                                     "Press the button below to let PlayCover move itself to /Applications.",
+            .alert(NSLocalizedString("alert.moveAppToApplications",
                                      comment: ""), isPresented: $integrity.integrityOff) {
-                Button("Move to /Applications", role: .cancel) {
+                Button("alert.moveAppToApplications.move", role: .cancel) {
                     integrity.moveToApps()
                 }
             }
@@ -168,7 +160,6 @@ struct Previews_MainView_Previews: PreviewProvider {
 	static var previews: some View {
 		MainView(showToast: $showToast)
 			.padding()
-			.environmentObject(UpdateService.shared)
 			.environmentObject(InstallVM.shared)
 			.environmentObject(AppsVM.shared)
 			.environmentObject(AppIntegrity())
@@ -176,7 +167,6 @@ struct Previews_MainView_Previews: PreviewProvider {
 			.onAppear {
 				UserDefaults.standard.register(defaults: ["ShowLinks": true])
 				SoundDeviceService.shared.prepareSoundDevice()
-				UpdateService.shared.checkUpdate()
 				NotifyService.shared.allowNotify()
 			}
 			.padding(-15)

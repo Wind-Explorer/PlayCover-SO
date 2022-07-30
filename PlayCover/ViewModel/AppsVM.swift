@@ -3,7 +3,6 @@
 //  PlayCover
 //
 
-import Foundation
 import Cocoa
 
 class AppsVM: ObservableObject {
@@ -38,7 +37,6 @@ class AppsVM: ObservableObject {
                         if let container = containers[app.info.bundleIdentifier] {
                             app.container = container
                             print("Application installed under:", sub.path)
-                            LoginServiceKit.removeLoginItems(at: sub.path)
                         }
                         result.append(app)
                     }

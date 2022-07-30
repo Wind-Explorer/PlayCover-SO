@@ -1,5 +1,4 @@
 import SwiftUI
-import Cocoa
 
 struct InstallProgress: View {
 
@@ -28,7 +27,7 @@ struct ProgressBar: View {
                 Rectangle().frame(width: min(CGFloat(install.progress)*geometry.size.width, geometry.size.width),
                                   height: geometry.size.height)
                     .foregroundColor(.accentColor)
-                    .animation(.linear)
+                    .animation(.linear, value: install.progress)
             }.cornerRadius(45.0)
         }
     }
